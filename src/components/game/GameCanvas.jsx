@@ -8,6 +8,8 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   // Game object storage
   const missiles = useRef([]);
   const interceptors = useRef([]);
+  const activeInterceptor = useRef(null);
+  const keyState = useRef({ ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false });
   const explosions = useRef([]);
   const cities = useRef([
     { name: 'Tel Aviv', x: 0.2, y: 0.85, health: 100 },
@@ -60,6 +62,54 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     davids_sling: 'fateh',
     arrow: 'shahab'
   };
+
+  const launchInterceptor = useCallback(() => {
+    if (!isGameActive) return;
+    if (cooldowns[selectedSystem] > 0) return;
+
+    const basePositions = {
+      iron_dome: { x: canvasSize.width * 0.25, y: canvasSize.height * 0.9 },
+      davids_sling: { x: canvasSize.width * 0.5, y: canvasSize.height * 0.9 },
+      arrow: { x: canvasSize.width * 0.75, y: canvasSize.height * 0.9 }
+    };
+    const pos = basePositions[selectedSystem];
+    const interceptor = {
+      id: Date.now() + Math.random(),
+      x: pos.x,
+      y: pos.y,
+      vx: 0,
+      vy: -6,
+      systemType: selectedSystem
+    };
+    interceptors.current.push(interceptor);
+    activeInterceptor.current = interceptor;
+    onLaunchInterceptor(selectedSystem);
+  }, [isGameActive, cooldowns, selectedSystem, canvasSize, onLaunchInterceptor]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+        keyState.current[e.code] = true;
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        launchInterceptor();
+      }
+    };
+    const handleKeyUp = (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+        keyState.current[e.code] = false;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [launchInterceptor]);
 
   // Resize canvas
   useEffect(() => {
@@ -316,119 +366,48 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
 
   const updateAndDrawInterceptors = (ctx) => {
     interceptors.current = interceptors.current.filter(interceptor => {
-      if (!interceptor.targetMissile || interceptor.targetMissile.isIntercepted) {
-        let closestMissile = null;
-        let closestDistance = Infinity;
-        const reTargetRange = 400;
-        const requiredMissileType = defenseSystemMapping[interceptor.systemType];
-
-        missiles.current.forEach(missile => {
-          if (missile.isIntercepted || missile.type !== requiredMissileType) return;
-          const distance = Math.sqrt(Math.pow(missile.x - interceptor.x, 2) + Math.pow(missile.y - interceptor.y, 2));
-          if (distance < reTargetRange && distance < closestDistance) {
-            closestDistance = distance;
-            closestMissile = missile;
-          }
-        });
-        interceptor.targetMissile = closestMissile;
-      }
-
-      if (!interceptor.targetMissile) {
-        interceptor.y -= 8;
-        ctx.fillStyle = '#cccccc';
-        ctx.beginPath();
-        ctx.arc(interceptor.x, interceptor.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-        return interceptor.y > 0;
-      }
-
-      interceptor.isHoming = true;
-      const targetX = interceptor.targetMissile.x;
-      const targetY = interceptor.targetMissile.y;
-
-      const dx = targetX - interceptor.x;
-      const dy = targetY - interceptor.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distance < 20) {
-        const baseRadius = interceptor.isHoming ? 60 : 40;
-        const effectiveExplosionRadiusLevel = (upgrades && upgrades.explosion_radius) ? upgrades.explosion_radius : 1;
-        const enhancedRadius = baseRadius * (1 + (effectiveExplosionRadiusLevel - 1) * 0.3);
-
-        explosions.current.push({
-          x: interceptor.x,
-          y: interceptor.y,
-          size: 0,
-          maxSize: enhancedRadius,
-          life: interceptor.isHoming ? 50 : 30,
-          color: interceptor.isHoming ? 'cyan' : 'blue'
-        });
-
-        const collisionRadius = enhancedRadius * 0.8;
-        missiles.current.forEach(missile => {
-          if (missile.isIntercepted) return;
-          const missileDist = Math.sqrt(
-            Math.pow(missile.x - interceptor.x, 2) +
-            Math.pow(missile.y - interceptor.y, 2)
-          );
-          if (missileDist < collisionRadius) {
-            onMissileClick(missile, interceptor.systemType);
-          }
-        });
-        return false;
-      }
-
-      const baseSpeed = interceptor.isHoming ? 8 : 6;
-      const effectiveInterceptorSpeedLevel = (upgrades && upgrades.interceptor_speed) ? upgrades.interceptor_speed : 1;
-      const enhancedSpeed = baseSpeed * (1 + (effectiveInterceptorSpeedLevel - 1) * 0.4);
-      interceptor.x += (dx / distance) * enhancedSpeed;
-      interceptor.y += (dy / distance) * enhancedSpeed;
-
-      if (interceptor.isHoming) {
-        const gradient = ctx.createRadialGradient(interceptor.x, interceptor.y, 0, interceptor.x, interceptor.y, 12);
-        gradient.addColorStop(0, '#00ffff');
-        gradient.addColorStop(0.3, '#0088ff');
-        gradient.addColorStop(0.7, '#004499');
-        gradient.addColorStop(1, 'rgba(0, 136, 255, 0)');
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(interceptor.x, interceptor.y, 12, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(interceptor.x, interceptor.y, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (interceptor.targetMissile && !interceptor.targetMissile.isIntercepted) {
-          ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([5, 5]);
-          ctx.beginPath();
-          ctx.moveTo(interceptor.x, interceptor.y);
-          ctx.lineTo(interceptor.targetMissile.x, interceptor.targetMissile.y);
-          ctx.stroke();
-          ctx.setLineDash([]);
+      if (activeInterceptor.current === interceptor) {
+        let dx = 0;
+        let dy = 0;
+        if (keyState.current.ArrowLeft) dx -= 1;
+        if (keyState.current.ArrowRight) dx += 1;
+        if (keyState.current.ArrowUp) dy -= 1;
+        if (keyState.current.ArrowDown) dy += 1;
+        if (dx !== 0 || dy !== 0) {
+          const speed = 6 * (1 + (upgrades?.interceptor_speed - 1) * 0.4);
+          const len = Math.sqrt(dx * dx + dy * dy);
+          interceptor.vx = (dx / len) * speed;
+          interceptor.vy = (dy / len) * speed;
         }
-      } else {
-        const gradient = ctx.createRadialGradient(interceptor.x, interceptor.y, 0, interceptor.x, interceptor.y, 8);
-        gradient.addColorStop(0, '#88aaff');
-        gradient.addColorStop(0.5, '#4466bb');
-        gradient.addColorStop(1, 'rgba(68, 102, 187, 0)');
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(interceptor.x, interceptor.y, 8, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#cccccc';
-        ctx.beginPath();
-        ctx.arc(interceptor.x, interceptor.y, 3, 0, Math.PI * 2);
-        ctx.fill();
       }
 
-      return true;
+      interceptor.x += interceptor.vx;
+      interceptor.y += interceptor.vy;
+
+      for (const missile of missiles.current) {
+        if (missile.isIntercepted) continue;
+        const dist = Math.sqrt(
+          Math.pow(missile.x - interceptor.x, 2) +
+          Math.pow(missile.y - interceptor.y, 2)
+        );
+        if (dist < 20) {
+          explosions.current.push({ x: interceptor.x, y: interceptor.y, size: 0, maxSize: 60, life: 40, color: 'cyan' });
+          onMissileClick(missile, interceptor.systemType);
+          return false;
+        }
+      }
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(interceptor.x, interceptor.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      return (
+        interceptor.x > -20 &&
+        interceptor.x < canvasSize.width + 20 &&
+        interceptor.y > -20 &&
+        interceptor.y < canvasSize.height + 20
+      );
     });
   };
 
@@ -460,61 +439,12 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     });
   };
 
-  const handleCanvasClick = useCallback((event) => {
-    if (!isGameActive) return;
-    if (cooldowns[selectedSystem] > 0) return;
-
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
-
-    let bestTarget = null;
-    let minDistance = 150;
-    const requiredMissileType = defenseSystemMapping[selectedSystem];
-
-    missiles.current.forEach(missile => {
-      if (missile.isIntercepted || missile.type !== requiredMissileType) {
-        return;
-      }
-
-      const distanceToClick = Math.sqrt(Math.pow(missile.x - clickX, 2) + Math.pow(missile.y - clickY, 2));
-
-      if (distanceToClick < minDistance) {
-        minDistance = distanceToClick;
-        bestTarget = missile;
-      }
-    });
-
-    if (bestTarget) {
-      onLaunchInterceptor(selectedSystem);
-
-      const launchPositions = [
-        { x: canvasSize.width * 0.15, y: canvasSize.height * 0.7 },
-        { x: canvasSize.width * 0.35, y: canvasSize.height * 0.65 },
-        { x: canvasSize.width * 0.5, y: canvasSize.height * 0.6 },
-        { x: canvasSize.width * 0.65, y: canvasSize.height * 0.65 },
-        { x: canvasSize.width * 0.85, y: canvasSize.height * 0.7 }
-      ];
-      const launchPos = launchPositions[Math.floor(Math.random() * launchPositions.length)];
-
-      interceptors.current.push({
-        id: Date.now() + Math.random(),
-        x: launchPos.x,
-        y: launchPos.y,
-        targetMissile: bestTarget,
-        isHoming: true,
-        systemType: selectedSystem
-      });
-    }
-  }, [isGameActive, canvasSize, selectedSystem, cooldowns, onLaunchInterceptor]);
 
   return (
     <canvas
       ref={canvasRef}
       width={canvasSize.width}
       height={canvasSize.height}
-      onClick={handleCanvasClick}
       className="border border-green-500/30 rounded-lg cursor-crosshair bg-black w-full h-full"
     />
   );
