@@ -512,11 +512,10 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     // Find the valid missile closest to the player's click
     let bestTarget = null;
     let minDistance = 150; // Max radius from click to acquire a target
-    const requiredMissileType = defenseSystemMapping[selectedSystem];
 
     missiles.current.forEach(missile => {
-      if (missile.isIntercepted || missile.type !== requiredMissileType) {
-        return; // Skip invalid targets (already hit or wrong type)
+      if (missile.isIntercepted) {
+        return; // Skip missiles already taken out
       }
 
       const distanceToClick = Math.sqrt(Math.pow(missile.x - clickX, 2) + Math.pow(missile.y - clickY, 2));
