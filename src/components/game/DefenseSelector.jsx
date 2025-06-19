@@ -43,7 +43,7 @@ export default function DefenseSelector({ selectedSystem, onSystemSelect, cooldo
   }, [onSystemSelect]);
 
   return (
-    <div className="fixed bottom-2 left-1/2 transform -translate-x-1/2 z-10">
+    <div className="mt-4 flex justify-center">
       <div className="tactical-panel rounded-xl p-4 backdrop-blur-md">
         <div className="text-center mb-3">
           <p className="text-green-400 text-sm font-semibold">DEFENSE SYSTEMS</p>

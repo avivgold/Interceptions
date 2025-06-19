@@ -159,7 +159,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         y: -30,
         target: targetBuilding,
         targetX: targetBuilding.ratio * canvasSize.width,
-        targetY: canvasSize.height * 0.85,
+        targetY: canvasSize.height * 0.93 - 40,
         angle: 0,
         health: missileTypes[type].health,
         maxHealth: missileTypes[type].health,
@@ -217,12 +217,14 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   };
 
   const drawBuildings = (ctx) => {
+    const baseY = canvasSize.height * 0.93;
+    const height = 40;
+    const width = 30;
+    ctx.textAlign = 'center';
+    ctx.font = '16px Arial';
     buildings.current.forEach((b, idx) => {
       const x = b.ratio * canvasSize.width;
-      const baseY = canvasSize.height * 0.95; // position near bottom of screen
-      const height = 40; // consistent height for all buildings
-      const width = 30;
-      ctx.fillStyle = b.health > 0 ? '#2d3748' : '#552222';
+      ctx.fillStyle = b.health > 0 ? '#555555' : '#552222';
       ctx.fillRect(x - width / 2, baseY - height, width, height);
       if (b.health <= 0) {
         ctx.fillStyle = '#ff4444';
