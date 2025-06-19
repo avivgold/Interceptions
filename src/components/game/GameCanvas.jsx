@@ -23,7 +23,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   // Initialize buildings when city, canvas size, or game starts
   useEffect(() => {
     const ratios = cityConfigs[selectedCity] || cityConfigs.tel_aviv;
-    buildings.current = ratios.map(r => ({ ratio: r, health: 1 }));
+    buildings.current = ratios.map(r => ({ ratio: r, health: 1, shield: false }));
   }, [selectedCity, canvasSize, isGameActive]);
 
   // Enhanced missile types with progressive speed increases
@@ -208,12 +208,14 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   useEffect(() => {
     if (!isGameActive) return;
     const dropInterval = setInterval(() => {
+      const types = ['money', 'bomb', 'shield'];
+      const type = types[Math.floor(Math.random() * types.length)];
       powerUps.current.push({
         id: Date.now() + Math.random(),
         x: Math.random() * canvasSize.width,
         y: -20,
         vy: 1 + Math.random(),
-        type: Math.random() < 0.5 ? 'money' : 'bomb',
+        type,
         size: 15
       });
     }, 15000);
@@ -271,10 +273,19 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     const width = 30;
     ctx.textAlign = 'center';
     ctx.font = '16px Arial';
-    buildings.current.forEach((b, idx) => {
+    buildings.current.forEach((b) => {
       const x = b.ratio * canvasSize.width;
       ctx.fillStyle = b.health > 0 ? '#555555' : '#552222';
       ctx.fillRect(x - width / 2, baseY - height, width, height);
+
+      if (b.shield && b.health > 0) {
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, baseY - height / 2, width * 0.7, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
       if (b.health <= 0) {
         ctx.fillStyle = '#ff4444';
         ctx.fillText('X', x, baseY - height - 5);
@@ -299,12 +310,21 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   };
 
   const drawPowerUp = (ctx, p) => {
-    ctx.fillStyle = p.type === 'money' ? '#ffd700' : '#ff66cc';
+    let color = '#ff66cc';
+    let text = 'B';
+    if (p.type === 'money') {
+      color = '#ffd700';
+      text = '$';
+    } else if (p.type === 'shield') {
+      color = '#00ffff';
+      text = 'S';
+    }
+    ctx.fillStyle = color;
     ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
     ctx.fillStyle = '#000';
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(p.type === 'money' ? '$' : 'B', p.x, p.y + 4);
+    ctx.fillText(text, p.x, p.y + 4);
   };
 
   const drawMissile = (ctx, missile) => {
@@ -461,9 +481,13 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
 
       if (distance < missile.speed) {
         if (missile.target) {
-          missile.target.health -= 1;
-          if (buildings.current.every(b => b.health <= 0)) {
-            onGameOver();
+          if (missile.target.shield) {
+            missile.target.shield = false;
+          } else {
+            missile.target.health -= 1;
+            if (buildings.current.every(b => b.health <= 0)) {
+              onGameOver();
+            }
           }
         } else {
           onGameOver();
@@ -513,6 +537,13 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         const p = powerUps.current[i];
         const dist = Math.sqrt(Math.pow(p.x - interceptor.x, 2) + Math.pow(p.y - interceptor.y, 2));
         if (dist < p.size) {
+          if (p.type === 'shield') {
+            const alive = buildings.current.filter(b => b.health > 0);
+            if (alive.length > 0) {
+              const b = alive[Math.floor(Math.random() * alive.length)];
+              b.shield = true;
+            }
+          }
           onPowerUpCollected && onPowerUpCollected(p.type);
           powerUps.current.splice(i, 1);
           break;

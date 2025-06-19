@@ -195,6 +195,8 @@ export default function Game() {
       setGameState(prev => ({ ...prev, money: prev.money + 200 }));
     } else if (type === 'bomb') {
       setBombs(prev => prev + 1);
+    } else if (type === 'shield') {
+      // handled inside GameCanvas
     }
   };
 
