@@ -1,0 +1,50 @@
+{
+  "name": "GameScore",
+  "type": "object",
+  "properties": {
+    "player_name": {
+      "type": "string",
+      "description": "Player's display name"
+    },
+    "score": {
+      "type": "number",
+      "description": "Final game score"
+    },
+    "missiles_intercepted": {
+      "type": "number",
+      "description": "Total missiles successfully intercepted"
+    },
+    "missiles_missed": {
+      "type": "number",
+      "description": "Total missiles that hit targets"
+    },
+    "game_duration": {
+      "type": "number",
+      "description": "Game duration in seconds"
+    },
+    "difficulty_level": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ],
+      "default": "medium",
+      "description": "Difficulty level played"
+    },
+    "money_earned": {
+      "type": "number",
+      "description": "Total money earned during the game"
+    },
+    "final_wave": {
+      "type": "number",
+      "description": "Highest wave reached"
+    }
+  },
+  "required": [
+    "score",
+    "missiles_intercepted",
+    "missiles_missed",
+    "game_duration"
+  ]
+}
