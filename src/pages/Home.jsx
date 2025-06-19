@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, Trophy, Shield } from 'lucide-react';
+import { Play, Trophy, Shield, Target, Zap } from 'lucide-react';
 
 export default function Home() {
   return (
