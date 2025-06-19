@@ -70,16 +70,17 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     arrow: 'shahab'
   };
 
+  const getLauncherPositions = () => ({
+    iron_dome: { x: canvasSize.width * 0.25, y: canvasSize.height * 0.86 },
+    davids_sling: { x: canvasSize.width * 0.5, y: canvasSize.height * 0.86 },
+    arrow: { x: canvasSize.width * 0.75, y: canvasSize.height * 0.86 }
+  });
+
   const launchInterceptor = useCallback(() => {
     if (!isGameActive) return;
     if (cooldowns[selectedSystem] > 0) return;
 
-    const basePositions = {
-      iron_dome: { x: canvasSize.width * 0.25, y: canvasSize.height * 0.9 },
-      davids_sling: { x: canvasSize.width * 0.5, y: canvasSize.height * 0.9 },
-      arrow: { x: canvasSize.width * 0.75, y: canvasSize.height * 0.9 }
-    };
-    const pos = basePositions[selectedSystem];
+    const pos = getLauncherPositions()[selectedSystem];
     const interceptor = {
       id: Date.now() + Math.random(),
       x: pos.x,
@@ -159,7 +160,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         y: -30,
         target: targetBuilding,
         targetX: targetBuilding.ratio * canvasSize.width,
-        targetY: canvasSize.height * 0.93 - 40,
+        targetY: canvasSize.height * 0.88 - 40,
         angle: 0,
         health: missileTypes[type].health,
         maxHealth: missileTypes[type].health,
@@ -182,6 +183,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
 
     drawBackground(ctx);
     drawBuildings(ctx);
+    drawLaunchers(ctx);
     updateAndDrawMissiles(ctx);
     updateAndDrawInterceptors(ctx);
     updateAndDrawExplosions(ctx);
@@ -217,7 +219,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   };
 
   const drawBuildings = (ctx) => {
-    const baseY = canvasSize.height * 0.93;
+    const baseY = canvasSize.height * 0.88;
     const height = 40;
     const width = 30;
     ctx.textAlign = 'center';
@@ -230,6 +232,22 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         ctx.fillStyle = '#ff4444';
         ctx.fillText('X', x, baseY - height - 5);
       }
+    });
+  };
+
+  const drawLaunchers = (ctx) => {
+    const positions = getLauncherPositions();
+    Object.values(positions).forEach(pos => {
+      const size = 20;
+      ctx.fillStyle = '#444';
+      ctx.fillRect(pos.x - size / 2, pos.y - 10, size, 10);
+      ctx.fillStyle = '#888';
+      ctx.beginPath();
+      ctx.moveTo(pos.x - size / 2, pos.y - 10);
+      ctx.lineTo(pos.x, pos.y - 25);
+      ctx.lineTo(pos.x + size / 2, pos.y - 10);
+      ctx.closePath();
+      ctx.fill();
     });
   };
 

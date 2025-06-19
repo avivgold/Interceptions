@@ -241,10 +241,13 @@ export default function Game() {
         </div>
       </div>
       
-      <div className="tactical-panel rounded-lg flex-grow relative">
-        <GameCanvas 
+      <div
+        className="tactical-panel rounded-lg relative mx-auto w-full"
+        style={{ height: '50vh' }}
+      >
+        <GameCanvas
           key={gameId}
-          gameState={gameState} 
+          gameState={gameState}
           onMissileClick={handleMissileClick} 
           onGameOver={handleGameOver} 
           isGameActive={isGameActive}
