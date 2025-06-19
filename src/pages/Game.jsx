@@ -25,6 +25,8 @@ export default function Game() {
   const [showUpgradeShop, setShowUpgradeShop] = useState(false);
   const [startTime, setStartTime] = useState(null);
   const [gameId, setGameId] = useState(1);
+  const [bombs, setBombs] = useState(1);
+  const [bombSignal, setBombSignal] = useState(0);
 
   // Upgrade system
   const [upgrades, setUpgrades] = useState({
@@ -74,6 +76,8 @@ export default function Game() {
     setShowGameOver(false);
     setShowUpgradeShop(false);
     setGameId(prevId => prevId + 1);
+    setBombs(1);
+    setBombSignal(0);
   };
 
   const pauseGame = () => {
@@ -186,6 +190,32 @@ export default function Game() {
     }
   };
 
+  const handlePowerUpCollected = (type) => {
+    if (type === 'money') {
+      setGameState(prev => ({ ...prev, money: prev.money + 200 }));
+    } else if (type === 'bomb') {
+      setBombs(prev => prev + 1);
+    }
+  };
+
+  const useBomb = useCallback(() => {
+    if (bombs > 0 && isGameActive) {
+      setBombs(prev => prev - 1);
+      setBombSignal(Date.now());
+    }
+  }, [bombs, isGameActive]);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        useBomb();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [useBomb]);
+
   return (
     <div className="h-[calc(100vh-80px)] p-4 flex flex-col relative">
       <div className="tactical-panel rounded-lg p-4 mb-4 flex items-center justify-between">
@@ -195,6 +225,7 @@ export default function Game() {
           <span className="text-orange-400">WAVE: {gameState.wave}</span>
           <span className="text-yellow-400">💰 ${gameState.money}</span>
           <span className="text-gray-400">MISSED: {gameState.missed}</span>
+          <span className="text-purple-400">BOMBS: {bombs}</span>
           {isGamePaused && <span className="text-yellow-400 animate-pulse">⏸ PAUSED</span>}
           <select
             value={selectedCity}
@@ -221,6 +252,13 @@ export default function Game() {
                selectedSystem === 'davids_sling' ? "David's Sling" : 'Arrow'}
             </span>
           </div>
+          <Button
+            onClick={useBomb}
+            disabled={bombs <= 0 || !isGameActive}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            BOMB
+          </Button>
           <Button 
             onClick={togglePause}
             className={
@@ -257,6 +295,8 @@ export default function Game() {
           onLaunchInterceptor={handleLaunchInterceptor}
           upgrades={upgrades}
           startTime={startTime}
+          bombSignal={bombSignal}
+          onPowerUpCollected={handlePowerUpCollected}
         />
       </div>
       

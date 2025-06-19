@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGameActive, selectedSystem, cooldowns, onLaunchInterceptor, upgrades, startTime, selectedCity }) {
+export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGameActive, selectedSystem, cooldowns, onLaunchInterceptor, upgrades, startTime, selectedCity, bombSignal, onPowerUpCollected }) {
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
@@ -11,6 +11,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   const activeInterceptor = useRef(null);
   const keyState = useRef({ ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false });
   const explosions = useRef([]);
+  const powerUps = useRef([]);
   const buildings = useRef([]);
 
   const cityConfigs = {
@@ -123,6 +124,27 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     };
   }, [launchInterceptor]);
 
+  // React to bomb usage
+  useEffect(() => {
+    if (!bombSignal) return;
+    missiles.current.forEach(missile => {
+      if (!missile.isIntercepted) {
+        explosions.current.push({
+          x: missile.x,
+          y: missile.y,
+          size: 0,
+          maxSize: 80,
+          life: 50,
+          color: 'blue',
+          systemType: selectedSystem,
+          hitIds: new Set()
+        });
+        onMissileClick(missile, selectedSystem);
+      }
+    });
+    missiles.current = [];
+  }, [bombSignal]);
+
   // Resize canvas
   useEffect(() => {
     const updateSize = () => {
@@ -182,6 +204,22 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     return () => clearInterval(spawnInterval);
   }, [isGameActive, gameState.wave, canvasSize, startTime]);
 
+  // Power-up spawn system
+  useEffect(() => {
+    if (!isGameActive) return;
+    const dropInterval = setInterval(() => {
+      powerUps.current.push({
+        id: Date.now() + Math.random(),
+        x: Math.random() * canvasSize.width,
+        y: -20,
+        vy: 1 + Math.random(),
+        type: Math.random() < 0.5 ? 'money' : 'bomb',
+        size: 15
+      });
+    }, 15000);
+    return () => clearInterval(dropInterval);
+  }, [isGameActive, canvasSize]);
+
   // Main game loop
   const gameLoop = useCallback(() => {
     const canvas = canvasRef.current;
@@ -194,6 +232,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     drawLaunchers(ctx);
     updateAndDrawMissiles(ctx);
     updateAndDrawInterceptors(ctx);
+    updateAndDrawPowerUps(ctx);
     updateAndDrawExplosions(ctx);
 
     if (isGameActive) {
@@ -259,6 +298,15 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     });
   };
 
+  const drawPowerUp = (ctx, p) => {
+    ctx.fillStyle = p.type === 'money' ? '#ffd700' : '#ff66cc';
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+    ctx.fillStyle = '#000';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.type === 'money' ? '$' : 'B', p.x, p.y + 4);
+  };
+
   const drawMissile = (ctx, missile) => {
     const { x, y, type, angle, health, maxHealth } = missile;
     const missileType = missileTypes[type];
@@ -319,6 +367,14 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     ctx.fillStyle = '#888888';
     ctx.fillRect(-4, missileType.size/2 - 2, 2, 6);
     ctx.fillRect(2, missileType.size/2 - 2, 2, 6);
+  };
+
+  const updateAndDrawPowerUps = (ctx) => {
+    powerUps.current = powerUps.current.filter(p => {
+      p.y += p.vy;
+      drawPowerUp(ctx, p);
+      return p.y < canvasSize.height + p.size;
+    });
   };
 
   const drawTacticalMissile = (ctx, missileType) => {
@@ -451,6 +507,17 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
 
       interceptor.x += interceptor.vx;
       interceptor.y += interceptor.vy;
+
+      // Collect power-ups
+      for (let i = 0; i < powerUps.current.length; i++) {
+        const p = powerUps.current[i];
+        const dist = Math.sqrt(Math.pow(p.x - interceptor.x, 2) + Math.pow(p.y - interceptor.y, 2));
+        if (dist < p.size) {
+          onPowerUpCollected && onPowerUpCollected(p.type);
+          powerUps.current.splice(i, 1);
+          break;
+        }
+      }
 
       for (const missile of missiles.current) {
         if (missile.isIntercepted) continue;
