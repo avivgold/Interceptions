@@ -128,7 +128,7 @@ export default function Game() {
     const isCorrectSystem = defenseSystemMapping[hittingSystemType] === missile.type;
     
     if (isCorrectSystem) {
-      missile.health = 0;
+      missile.health -= 2;
     } else {
       missile.health -= 1;
     }

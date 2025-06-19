@@ -27,7 +27,11 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
 
   // Enhanced missile types with progressive speed increases
   const getMissileSpeed = (baseSpeed, wave) => {
-    return baseSpeed * (1 + (wave - 1) * 0.15); // 15% faster each wave
+    let speed = baseSpeed * (1 + (wave - 1) * 0.15);
+    if (wave >= 5) {
+      speed *= 1 + (wave - 4) * 0.2; // accelerate harder from wave 5+
+    }
+    return speed;
   };
 
   // Enhanced missile types with distinct visuals
@@ -39,7 +43,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       size: 8,
       name: 'Katyusha',
       shape: 'rocket',
-      health: 1,
+      health: 2,
       effectiveSystem: 'iron_dome'
     },
     fateh: {
@@ -59,7 +63,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       size: 16,
       name: 'Shahab-3',
       shape: 'ballistic',
-      health: 3,
+      health: 2,
       effectiveSystem: 'arrow'
     }
   };
@@ -138,7 +142,11 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     if (!isGameActive) return;
 
     const baseSpawnRate = 4000;
-    const waveMultiplier = Math.max(0.4, 1 - (gameState.wave - 1) * 0.08);
+    let waveMultiplier = 1 - (gameState.wave - 1) * 0.08;
+    if (gameState.wave >= 5) {
+      waveMultiplier -= (gameState.wave - 4) * 0.1;
+    }
+    waveMultiplier = Math.max(0.2, waveMultiplier);
     const spawnRate = Math.floor(baseSpawnRate * waveMultiplier);
 
     const spawnInterval = setInterval(() => {
@@ -451,8 +459,17 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
           Math.pow(missile.y - interceptor.y, 2)
         );
         if (dist < 20) {
-          explosions.current.push({ x: interceptor.x, y: interceptor.y, size: 0, maxSize: 70, life: 50, color: 'cyan', systemType: interceptor.systemType });
-          onMissileClick(missile, interceptor.systemType);
+          explosions.current.push({
+            x: interceptor.x,
+            y: interceptor.y,
+            size: 0,
+            maxSize: 70,
+            life: 50,
+            color: 'cyan',
+            systemType: interceptor.systemType,
+            hitIds: new Set()
+          });
+          // Missile damage handled in explosion loop to avoid double hits
           return false;
         }
       }
@@ -498,7 +515,8 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
             Math.pow(missile.x - exp.x, 2) +
             Math.pow(missile.y - exp.y, 2)
           );
-          if (dist < exp.size * 0.8) {
+          if (dist < exp.size * 0.8 && !exp.hitIds.has(missile.id)) {
+            exp.hitIds.add(missile.id);
             onMissileClick(missile, exp.systemType);
           }
         });
