@@ -219,14 +219,14 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   const drawBuildings = (ctx) => {
     buildings.current.forEach((b, idx) => {
       const x = b.ratio * canvasSize.width;
-      const y = canvasSize.height * 0.85;
-      const height = 40 + idx * 10;
+      const baseY = canvasSize.height * 0.95; // position near bottom of screen
+      const height = 40; // consistent height for all buildings
       const width = 30;
       ctx.fillStyle = b.health > 0 ? '#2d3748' : '#552222';
-      ctx.fillRect(x - width / 2, y - height, width, height);
+      ctx.fillRect(x - width / 2, baseY - height, width, height);
       if (b.health <= 0) {
         ctx.fillStyle = '#ff4444';
-        ctx.fillText('X', x, y - height - 5);
+        ctx.fillText('X', x, baseY - height - 5);
       }
     });
   };
