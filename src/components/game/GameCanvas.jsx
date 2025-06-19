@@ -33,7 +33,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   // Enhanced missile types with distinct visuals
   const missileTypes = {
     katyusha: {
-      baseSpeed: 1.2,
+      baseSpeed: 0.8,
       color: '#ffaa00',
       trailColor: '#ffcc44',
       size: 8,
@@ -43,7 +43,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       effectiveSystem: 'iron_dome'
     },
     fateh: {
-      baseSpeed: 0.8,
+      baseSpeed: 0.6,
       color: '#ff6600',
       trailColor: '#ff8844',
       size: 12,
@@ -53,7 +53,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       effectiveSystem: 'davids_sling'
     },
     shahab: {
-      baseSpeed: 0.6,
+      baseSpeed: 0.4,
       color: '#ff2222',
       trailColor: '#ff4444',
       size: 16,
@@ -137,8 +137,8 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   useEffect(() => {
     if (!isGameActive) return;
 
-    const baseSpawnRate = 2500;
-    const waveMultiplier = Math.max(0.3, 1 - (gameState.wave - 1) * 0.1);
+    const baseSpawnRate = 4000;
+    const waveMultiplier = Math.max(0.4, 1 - (gameState.wave - 1) * 0.08);
     const spawnRate = Math.floor(baseSpawnRate * waveMultiplier);
 
     const spawnInterval = setInterval(() => {
@@ -355,6 +355,38 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     ctx.fillRect(3, missileType.size/2 - 4, 3, 10);
   };
 
+  const drawInterceptor = (ctx, interceptor) => {
+    ctx.save();
+    ctx.translate(interceptor.x, interceptor.y);
+    const angle = Math.atan2(interceptor.vy, interceptor.vx);
+    ctx.rotate(angle + Math.PI / 2);
+
+    // flame
+    ctx.fillStyle = '#ffdd55';
+    ctx.beginPath();
+    ctx.moveTo(-2, 6);
+    ctx.lineTo(2, 6);
+    ctx.lineTo(0, 10 + Math.random() * 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // body
+    ctx.fillStyle = '#dddddd';
+    ctx.beginPath();
+    ctx.moveTo(0, -8);
+    ctx.lineTo(-3, 4);
+    ctx.lineTo(3, 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // fins
+    ctx.fillStyle = '#777777';
+    ctx.fillRect(-4, 3, 2, 4);
+    ctx.fillRect(2, 3, 2, 4);
+
+    ctx.restore();
+  };
+
   const updateAndDrawMissiles = (ctx) => {
     missiles.current = missiles.current.filter(missile => {
       if (missile.isIntercepted) return false;
@@ -419,16 +451,13 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
           Math.pow(missile.y - interceptor.y, 2)
         );
         if (dist < 20) {
-          explosions.current.push({ x: interceptor.x, y: interceptor.y, size: 0, maxSize: 60, life: 40, color: 'cyan' });
+          explosions.current.push({ x: interceptor.x, y: interceptor.y, size: 0, maxSize: 70, life: 50, color: 'cyan', systemType: interceptor.systemType });
           onMissileClick(missile, interceptor.systemType);
           return false;
         }
       }
 
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(interceptor.x, interceptor.y, 4, 0, Math.PI * 2);
-      ctx.fill();
+      drawInterceptor(ctx, interceptor);
 
       return (
         interceptor.x > -20 &&
@@ -461,6 +490,19 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       ctx.beginPath();
       ctx.arc(exp.x, exp.y, exp.size, 0, Math.PI * 2);
       ctx.fill();
+
+      if (exp.systemType) {
+        missiles.current.forEach(missile => {
+          if (missile.isIntercepted) return;
+          const dist = Math.sqrt(
+            Math.pow(missile.x - exp.x, 2) +
+            Math.pow(missile.y - exp.y, 2)
+          );
+          if (dist < exp.size * 0.8) {
+            onMissileClick(missile, exp.systemType);
+          }
+        });
+      }
 
       exp.life--;
       return exp.life > 0;

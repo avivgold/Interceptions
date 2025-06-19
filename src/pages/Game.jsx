@@ -243,7 +243,7 @@ export default function Game() {
       
       <div
         className="tactical-panel rounded-lg relative mx-auto w-full"
-        style={{ height: '50vh' }}
+        style={{ height: '70vh' }}
       >
         <GameCanvas
           key={gameId}
