@@ -91,6 +91,27 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     arrow: 'shahab'
   };
 
+  const interceptorTypes = {
+    iron_dome: {
+      size: 8,
+      color: '#00ffff',
+      trailColor: '#66ffff',
+      shape: 'rocket'
+    },
+    davids_sling: {
+      size: 12,
+      color: '#88ccff',
+      trailColor: '#aadfff',
+      shape: 'missile'
+    },
+    arrow: {
+      size: 16,
+      color: '#ccccff',
+      trailColor: '#e0d0ff',
+      shape: 'ballistic'
+    }
+  };
+
   const getLauncherPositions = () => ({
     iron_dome: { x: canvasSize.width * 0.25, y: canvasSize.height * 0.86 },
     davids_sling: { x: canvasSize.width * 0.5, y: canvasSize.height * 0.86 },
@@ -512,33 +533,26 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   };
 
   const drawInterceptor = (ctx, interceptor) => {
+    const spec = interceptorTypes[interceptor.systemType];
     ctx.save();
     ctx.translate(interceptor.x, interceptor.y);
     const angle = Math.atan2(interceptor.vy, interceptor.vx);
     ctx.rotate(angle + Math.PI / 2);
 
-    // flame
-    ctx.fillStyle = '#ffdd55';
-    ctx.beginPath();
-    ctx.moveTo(-2, 6);
-    ctx.lineTo(2, 6);
-    ctx.lineTo(0, 10 + Math.random() * 4);
-    ctx.closePath();
-    ctx.fill();
+    // fiery trail similar to missiles
+    drawMissileTrail(ctx, interceptor, spec);
 
-    // body
-    ctx.fillStyle = '#dddddd';
-    ctx.beginPath();
-    ctx.moveTo(0, -8);
-    ctx.lineTo(-3, 4);
-    ctx.lineTo(3, 4);
-    ctx.closePath();
-    ctx.fill();
-
-    // fins
-    ctx.fillStyle = '#777777';
-    ctx.fillRect(-4, 3, 2, 4);
-    ctx.fillRect(2, 3, 2, 4);
+    switch (spec.shape) {
+      case 'rocket':
+        drawRocketMissile(ctx, spec);
+        break;
+      case 'missile':
+        drawTacticalMissile(ctx, spec);
+        break;
+      case 'ballistic':
+        drawBallisticMissile(ctx, spec);
+        break;
+    }
 
     ctx.restore();
   };
