@@ -55,7 +55,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   // Enhanced missile types with distinct visuals
   const missileTypes = {
     katyusha: {
-      baseSpeed: 0.8,
+      baseSpeed: 0.6,
       color: '#ffaa00',
       trailColor: '#ffcc44',
       size: 8,
@@ -65,7 +65,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       effectiveSystem: 'iron_dome'
     },
     fateh: {
-      baseSpeed: 0.6,
+      baseSpeed: 0.5,
       color: '#ff6600',
       trailColor: '#ff8844',
       size: 12,
@@ -75,7 +75,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       effectiveSystem: 'davids_sling'
     },
     shahab: {
-      baseSpeed: 0.4,
+      baseSpeed: 0.35,
       color: '#ff2222',
       trailColor: '#ff4444',
       size: 16,
@@ -249,6 +249,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       const baseTypes = ['money', 'bomb', 'shield'];
       if (gameState.wave >= 3) baseTypes.push('reload');
       if (gameState.wave >= 5) baseTypes.push('slow');
+      if (gameState.wave >= 7) baseTypes.push('laser');
       const type = baseTypes[Math.floor(Math.random() * baseTypes.length)];
       powerUps.current.push({
         id: Date.now() + Math.random(),
@@ -292,9 +293,9 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
 
   const drawBackground = (ctx) => {
     const bgGradient = ctx.createLinearGradient(0, 0, 0, canvasSize.height);
-    bgGradient.addColorStop(0, '#0a0a2e');
-    bgGradient.addColorStop(0.7, '#16213e');
-    bgGradient.addColorStop(1, '#1a365d');
+    bgGradient.addColorStop(0, '#120046');
+    bgGradient.addColorStop(0.5, '#001f54');
+    bgGradient.addColorStop(1, '#005f6b');
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
 
@@ -420,6 +421,9 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     } else if (p.type === 'slow') {
       color = '#00ff00';
       text = 'T';
+    } else if (p.type === 'laser') {
+      color = '#ff44aa';
+      text = 'L';
     }
     ctx.fillStyle = color;
     ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
@@ -618,7 +622,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         if (keyState.current.ArrowUp) dy -= 1;
         if (keyState.current.ArrowDown) dy += 1;
         if (dx !== 0 || dy !== 0) {
-          const speed = 6 * (1 + (upgrades?.interceptor_speed - 1) * 0.4);
+          const speed = 4 * (1 + (upgrades?.interceptor_speed - 1) * 0.4);
           const len = Math.sqrt(dx * dx + dy * dy);
           interceptor.vx = (dx / len) * speed;
           interceptor.vy = (dy / len) * speed;
@@ -641,6 +645,8 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
             }
           } else if (p.type === 'slow') {
             missileSlowUntil.current = Date.now() + 5000; // slow for 5s
+          } else if (p.type === 'laser') {
+            // laser handled by parent component
           }
           onPowerUpCollected && onPowerUpCollected(p.type);
           powerUps.current.splice(i, 1);

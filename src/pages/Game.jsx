@@ -191,6 +191,8 @@ export default function Game() {
       // handled inside GameCanvas
     } else if (type === 'reload') {
       setCooldowns({ iron_dome: 0, davids_sling: 0, arrow: 0 });
+    } else if (type === 'laser') {
+      setLaserCount(prev => Math.min(3, prev + 1));
     }
   };
 
