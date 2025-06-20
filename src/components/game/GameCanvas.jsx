@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGameActive, selectedSystem, cooldowns, onLaunchInterceptor, upgrades, startTime, selectedCity, bombSignal, onPowerUpCollected }) {
+export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGameActive, selectedSystem, cooldowns, onLaunchInterceptor, upgrades, startTime, selectedCity, bombSignal, onPowerUpCollected, laserCount }) {
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
@@ -13,6 +13,8 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   const explosions = useRef([]);
   const powerUps = useRef([]);
   const buildings = useRef([]);
+  const lasers = useRef([]);
+  const beams = useRef([]);
 
   const cityConfigs = {
     tel_aviv: [0.35, 0.5, 0.65],
@@ -25,6 +27,11 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     const ratios = cityConfigs[selectedCity] || cityConfigs.tel_aviv;
     buildings.current = ratios.map(r => ({ ratio: r, health: 1, shield: false }));
   }, [selectedCity, canvasSize, isGameActive]);
+
+  useEffect(() => {
+    const positions = [0.25, 0.5, 0.75];
+    lasers.current = positions.slice(0, laserCount).map(r => ({ ratio: r, cooldown: 0 }));
+  }, [laserCount, canvasSize]);
 
   // Enhanced missile types with progressive speed increases
   const getMissileSpeed = (baseSpeed, wave) => {
@@ -232,6 +239,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     drawBackground(ctx);
     drawBuildings(ctx);
     drawLaunchers(ctx);
+    updateAndDrawLasers(ctx);
     updateAndDrawMissiles(ctx);
     updateAndDrawInterceptors(ctx);
     updateAndDrawPowerUps(ctx);
@@ -306,6 +314,56 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       ctx.lineTo(pos.x + size / 2, pos.y - 10);
       ctx.closePath();
       ctx.fill();
+    });
+  };
+
+  const drawLaserBase = (ctx, x, y) => {
+    ctx.fillStyle = '#555';
+    ctx.fillRect(x - 8, y - 8, 16, 8);
+    ctx.fillStyle = '#999';
+    ctx.fillRect(x - 2, y - 18, 4, 10);
+  };
+
+  const updateAndDrawLasers = (ctx) => {
+    lasers.current.forEach(laser => {
+      const x = laser.ratio * canvasSize.width;
+      const y = canvasSize.height * 0.8;
+      drawLaserBase(ctx, x, y);
+
+      if (laser.cooldown > 0) {
+        laser.cooldown -= 1;
+        return;
+      }
+
+      let target = null;
+      let best = Infinity;
+      missiles.current.forEach(m => {
+        if (m.isIntercepted) return;
+        const dx = m.x - x;
+        const dy = m.y - y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 250 && d < best) {
+          best = d;
+          target = m;
+        }
+      });
+
+      if (target) {
+        beams.current.push({x1: x, y1: y-18, x2: target.x, y2: target.y, life:5});
+        onMissileClick(target, selectedSystem); // treat as correct system
+        laser.cooldown = 60;
+      }
+    });
+
+    beams.current = beams.current.filter(b => {
+      ctx.strokeStyle = '#ff33cc';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(b.x1, b.y1);
+      ctx.lineTo(b.x2, b.y2);
+      ctx.stroke();
+      b.life -=1;
+      return b.life >0;
     });
   };
 

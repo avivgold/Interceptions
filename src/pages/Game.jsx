@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameScore } from '@/entities/GameScore';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, ShoppingCart } from 'lucide-react';
+import { Play, Pause, Zap } from 'lucide-react';
 import GameCanvas from '../components/game/GameCanvas';
 import DefenseSelector from '../components/game/DefenseSelector';
 import GameOverModal from '../components/game/GameOverModal';
-import UpgradeShop from '../components/game/UpgradeShop';
 
 export default function Game() {
   const [isGameActive, setIsGameActive] = useState(false);
@@ -22,7 +21,7 @@ export default function Game() {
   const [selectedCity, setSelectedCity] = useState('tel_aviv');
   const [cooldowns, setCooldowns] = useState({ iron_dome: 0, davids_sling: 0, arrow: 0 });
   const [showGameOver, setShowGameOver] = useState(false);
-  const [showUpgradeShop, setShowUpgradeShop] = useState(false);
+  const [laserCount, setLaserCount] = useState(0);
   const [startTime, setStartTime] = useState(null);
   const [gameId, setGameId] = useState(1);
   const [bombs, setBombs] = useState(1);
@@ -74,10 +73,11 @@ export default function Game() {
     setStartTime(Date.now());
     setGameState({ score: 0, intercepted: 0, missed: 0, wave: 1, duration: 0, money: 0 });
     setShowGameOver(false);
-    setShowUpgradeShop(false);
+
     setGameId(prevId => prevId + 1);
     setBombs(1);
     setBombSignal(0);
+    setLaserCount(0);
   };
 
   const pauseGame = () => {
@@ -105,17 +105,11 @@ export default function Game() {
     }
   };
 
-  const openUpgradeShop = () => {
-    if (isGameActive) {
-      pauseGame();
-    }
-    setShowUpgradeShop(true);
-  };
-
-  const closeUpgradeShop = () => {
-    setShowUpgradeShop(false);
-    if (isGamePaused) {
-      resumeGame();
+  const buyLaser = () => {
+    const cost = 1000;
+    if (gameState.money >= cost && isGameActive) {
+      setGameState(prev => ({ ...prev, money: prev.money - cost }));
+      setLaserCount(prev => Math.min(3, prev + 1));
     }
   };
 
@@ -183,12 +177,6 @@ export default function Game() {
     setShowGameOver(false);
   };
 
-  const handleUpgrade = (upgradeType, cost) => {
-    if (gameState.money >= cost) {
-      setGameState(prev => ({ ...prev, money: prev.money - cost }));
-      setUpgrades(prev => ({ ...prev, [upgradeType]: prev[upgradeType] + 1 }));
-    }
-  };
 
   const handlePowerUpCollected = (type) => {
     if (type === 'money') {
@@ -241,16 +229,18 @@ export default function Game() {
           </select>
         </div>
         <div className="flex items-center gap-4">
-          <Button 
-            onClick={openUpgradeShop}
+          <Button
+            onClick={buyLaser}
+            disabled={!isGameActive || gameState.money < 1000 || laserCount >= 3}
             className="bg-yellow-600 hover:bg-yellow-700"
           >
-            <ShoppingCart className="mr-2 h-4 w-4"/>
-            UPGRADES
+            <Zap className="mr-2 h-4 w-4"/>
+            BUY LASER ($1000)
           </Button>
+          <div className="text-purple-300 text-sm">LASERS: {laserCount}</div>
           <div className="text-green-300 text-sm">
             Selected: <span className="text-green-400 font-semibold">
-              {selectedSystem === 'iron_dome' ? 'Iron Dome' : 
+              {selectedSystem === 'iron_dome' ? 'Iron Dome' :
                selectedSystem === 'davids_sling' ? "David's Sling" : 'Arrow'}
             </span>
           </div>
@@ -299,6 +289,7 @@ export default function Game() {
           startTime={startTime}
           bombSignal={bombSignal}
           onPowerUpCollected={handlePowerUpCollected}
+          laserCount={laserCount}
         />
       </div>
       
@@ -309,13 +300,6 @@ export default function Game() {
         upgrades={upgrades}
       />
       
-      <UpgradeShop 
-        isOpen={showUpgradeShop}
-        onClose={closeUpgradeShop}
-        money={gameState.money}
-        upgrades={upgrades}
-        onUpgrade={handleUpgrade}
-      />
       
       <GameOverModal 
         isOpen={showGameOver} 
