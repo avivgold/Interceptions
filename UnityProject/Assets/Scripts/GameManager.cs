@@ -54,10 +54,10 @@ public class GameManager : MonoBehaviour
 
     void SpawnMissile()
     {
-        Transform target = cityTargets[Random.Range(0, cityTargets.Length)];
-        Vector3 startPos = new Vector3(Random.Range(-8f, 8f), 6f, 0);
+        Transform target = cityTargets[UnityEngine.Random.Range(0, cityTargets.Length)];
+        Vector3 startPos = new Vector3(UnityEngine.Random.Range(-8f, 8f), 6f, 0);
 
-        MissileType type = (MissileType)Random.Range(0, 3);
+        MissileType type = (MissileType)UnityEngine.Random.Range(0, 3);
         float[] baseSpeeds = { 1.2f, 0.8f, 0.6f };
         int[] baseHealth = { 1, 2, 3 };
 
