@@ -4,6 +4,10 @@ This is a minimal Unity project that replicates the browser game in Unity so it 
 
 Open the `UnityProject` folder with Unity 2022 or newer.
 The main scene is located at `Assets/Scenes/Main.unity`.
+The scene intentionally contains only a single `GameManager` object. When you
+press **Play**, the manager will create a camera, launchers and buildings if they
+are not already present. This keeps the repository lightweight but means the
+scene view looks empty until the game starts.
 
 ## Features implemented
 - Three missile types with increasing speed per wave

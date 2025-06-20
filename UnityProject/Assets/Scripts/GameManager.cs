@@ -27,6 +27,8 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        EnsureSceneSetup();
+
         // Spawn buildings at target positions
         foreach (var t in cityTargets)
         {
@@ -146,6 +148,67 @@ public class GameManager : MonoBehaviour
             if (best != null)
             {
                 LaunchInterceptor(best);
+            }
+        }
+    }
+
+    void EnsureSceneSetup()
+    {
+        // Create a simple orthographic camera if none exists
+        if (Camera.main == null)
+        {
+            var camObj = new GameObject("Main Camera");
+            var cam = camObj.AddComponent<Camera>();
+            cam.orthographic = true;
+            camObj.tag = "MainCamera";
+            cam.transform.position = new Vector3(0, 0, -10);
+        }
+
+        // Generate basic prefabs if they were not assigned in the editor
+        if (missilePrefab == null)
+        {
+            missilePrefab = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            missilePrefab.transform.localScale = Vector3.one * 0.3f;
+            missilePrefab.AddComponent<Missile>();
+            missilePrefab.SetActive(false);
+        }
+
+        if (interceptorPrefab == null)
+        {
+            interceptorPrefab = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            interceptorPrefab.transform.localScale = new Vector3(0.2f, 0.5f, 0.2f);
+            interceptorPrefab.AddComponent<Interceptor>();
+            interceptorPrefab.SetActive(false);
+        }
+
+        if (buildingPrefab == null)
+        {
+            buildingPrefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            buildingPrefab.transform.localScale = new Vector3(1f, 0.6f, 1f);
+            buildingPrefab.AddComponent<Building>();
+            buildingPrefab.SetActive(false);
+        }
+
+        // Create launcher and city target transforms if none are set
+        if (launcherPoints == null || launcherPoints.Length == 0)
+        {
+            launcherPoints = new Transform[3];
+            for (int i = 0; i < launcherPoints.Length; i++)
+            {
+                var obj = new GameObject($"Launcher{i}");
+                obj.transform.position = new Vector3(-6f + i * 6f, -3.5f, 0f);
+                launcherPoints[i] = obj.transform;
+            }
+        }
+
+        if (cityTargets == null || cityTargets.Length == 0)
+        {
+            cityTargets = new Transform[3];
+            for (int i = 0; i < cityTargets.Length; i++)
+            {
+                var obj = new GameObject($"City{i}");
+                obj.transform.position = new Vector3(-6f + i * 6f, -4.5f, 0f);
+                cityTargets[i] = obj.transform;
             }
         }
     }
