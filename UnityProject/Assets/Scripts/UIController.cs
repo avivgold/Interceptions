@@ -1,5 +1,5 @@
 using UnityEngine;
-using TMPro;
+using TMPro; // Use TextMeshPro for UI text rendering
 
 public class UIController : MonoBehaviour
 {
