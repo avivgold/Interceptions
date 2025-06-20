@@ -1,10 +1,10 @@
 using UnityEngine;
-using UnityEngine.UI;
+using TMPro;
 
 public class UIController : MonoBehaviour
 {
-    public Text scoreText;
-    public Text waveText;
+    public TMP_Text scoreText;
+    public TMP_Text waveText;
     public GameManager manager;
 
     void Update()
