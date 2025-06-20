@@ -15,6 +15,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   const buildings = useRef([]);
   const lasers = useRef([]);
   const beams = useRef([]);
+  const missileSlowUntil = useRef(0);
 
   const cityConfigs = {
     tel_aviv: [0.35, 0.5, 0.65],
@@ -245,8 +246,10 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   useEffect(() => {
     if (!isGameActive) return;
     const dropInterval = setInterval(() => {
-      const types = ['money', 'bomb', 'shield'];
-      const type = types[Math.floor(Math.random() * types.length)];
+      const baseTypes = ['money', 'bomb', 'shield'];
+      if (gameState.wave >= 3) baseTypes.push('reload');
+      if (gameState.wave >= 5) baseTypes.push('slow');
+      const type = baseTypes[Math.floor(Math.random() * baseTypes.length)];
       powerUps.current.push({
         id: Date.now() + Math.random(),
         x: Math.random() * canvasSize.width,
@@ -255,9 +258,9 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         type,
         size: 15
       });
-    }, 15000);
+    }, Math.max(8000, 15000 - gameState.wave * 500));
     return () => clearInterval(dropInterval);
-  }, [isGameActive, canvasSize]);
+  }, [isGameActive, canvasSize, gameState.wave]);
 
   // Main game loop
   const gameLoop = useCallback(() => {
@@ -411,6 +414,12 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     } else if (p.type === 'shield') {
       color = '#00ffff';
       text = 'S';
+    } else if (p.type === 'reload') {
+      color = '#ff8800';
+      text = 'R';
+    } else if (p.type === 'slow') {
+      color = '#00ff00';
+      text = 'T';
     }
     ctx.fillStyle = color;
     ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
@@ -565,7 +574,8 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       const dy = missile.targetY - missile.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance < missile.speed) {
+      const slowFactor = Date.now() < missileSlowUntil.current ? 0.5 : 1;
+      if (distance < missile.speed * slowFactor) {
         if (missile.target) {
           if (missile.target.shield) {
             missile.target.shield = false;
@@ -589,8 +599,8 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         return false;
       }
 
-      missile.x += (dx / distance) * missile.speed + Math.sin(Date.now() * 0.01) * missile.wobble;
-      missile.y += (dy / distance) * missile.speed;
+      missile.x += (dx / distance) * missile.speed * slowFactor + Math.sin(Date.now() * 0.01) * missile.wobble;
+      missile.y += (dy / distance) * missile.speed * slowFactor;
       missile.angle = Math.atan2(dy, dx);
 
       drawMissile(ctx, missile);
@@ -629,6 +639,8 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
               const b = alive[Math.floor(Math.random() * alive.length)];
               b.shield = true;
             }
+          } else if (p.type === 'slow') {
+            missileSlowUntil.current = Date.now() + 5000; // slow for 5s
           }
           onPowerUpCollected && onPowerUpCollected(p.type);
           powerUps.current.splice(i, 1);

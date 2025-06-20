@@ -189,8 +189,29 @@ export default function Game() {
       setBombs(prev => prev + 1);
     } else if (type === 'shield') {
       // handled inside GameCanvas
+    } else if (type === 'reload') {
+      setCooldowns({ iron_dome: 0, davids_sling: 0, arrow: 0 });
     }
   };
+
+  const prevWaveRef = useRef(1);
+  useEffect(() => {
+    if (gameState.wave > prevWaveRef.current) {
+      if (gameState.wave === 5) {
+        setUpgrades(prev => ({
+          ...prev,
+          interceptor_speed: prev.interceptor_speed + 1,
+          explosion_radius: prev.explosion_radius + 1
+        }));
+      } else if (gameState.wave === 8) {
+        setUpgrades(prev => ({
+          ...prev,
+          reload_speed: prev.reload_speed + 1
+        }));
+      }
+      prevWaveRef.current = gameState.wave;
+    }
+  }, [gameState.wave]);
 
   const useBomb = useCallback(() => {
     if (bombs > 0 && isGameActive) {
