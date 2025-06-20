@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGameActive, selectedSystem, cooldowns, onLaunchInterceptor, upgrades, startTime, selectedCity, bombSignal, onPowerUpCollected, laserCount }) {
+export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGameActive, selectedSystem, cooldowns, onLaunchInterceptor, upgrades, startTime, selectedCity, bombSignal, onPowerUpCollected, laserCount, onLaserExpired }) {
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
@@ -30,7 +30,16 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
 
   useEffect(() => {
     const positions = [0.25, 0.5, 0.75];
-    lasers.current = positions.slice(0, laserCount).map(r => ({ ratio: r, cooldown: 0 }));
+    // Remove extra lasers if count decreased
+    lasers.current = lasers.current.slice(0, laserCount);
+    // Add new lasers if count increased
+    for (let i = lasers.current.length; i < laserCount; i++) {
+      lasers.current.push({ ratio: positions[i], cooldown: 0, shotsLeft: 4 });
+    }
+    // Ensure ratios stay aligned with available positions
+    lasers.current.forEach((laser, idx) => {
+      laser.ratio = positions[idx];
+    });
   }, [laserCount, canvasSize]);
 
   // Enhanced missile types with progressive speed increases
@@ -325,7 +334,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   };
 
   const updateAndDrawLasers = (ctx) => {
-    lasers.current.forEach(laser => {
+    lasers.current.forEach((laser, index) => {
       const x = laser.ratio * canvasSize.width;
       const y = canvasSize.height * 0.8;
       drawLaserBase(ctx, x, y);
@@ -352,6 +361,11 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         beams.current.push({x1: x, y1: y-18, x2: target.x, y2: target.y, life:5});
         onMissileClick(target, selectedSystem); // treat as correct system
         laser.cooldown = 60;
+        laser.shotsLeft = (laser.shotsLeft || 1) - 1;
+        if (laser.shotsLeft <= 0) {
+          lasers.current.splice(index, 1);
+          if (typeof onLaserExpired === 'function') onLaserExpired();
+        }
       }
     });
 

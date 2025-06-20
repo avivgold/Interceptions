@@ -106,12 +106,16 @@ export default function Game() {
   };
 
   const buyLaser = () => {
-    const cost = 1000;
+    const cost = 3000;
     if (gameState.money >= cost && isGameActive) {
       setGameState(prev => ({ ...prev, money: prev.money - cost }));
       setLaserCount(prev => Math.min(3, prev + 1));
     }
   };
+
+  const handleLaserExpired = useCallback(() => {
+    setLaserCount(prev => Math.max(0, prev - 1));
+  }, []);
 
   const handleLaunchInterceptor = useCallback(() => {
     if (cooldowns[selectedSystem] > 0) return;
@@ -231,11 +235,11 @@ export default function Game() {
         <div className="flex items-center gap-4">
           <Button
             onClick={buyLaser}
-            disabled={!isGameActive || gameState.money < 1000 || laserCount >= 3}
+            disabled={!isGameActive || gameState.money < 3000 || laserCount >= 3}
             className="bg-yellow-600 hover:bg-yellow-700"
           >
             <Zap className="mr-2 h-4 w-4"/>
-            BUY LASER ($1000)
+            BUY LASER ($3000)
           </Button>
           <div className="text-purple-300 text-sm">LASERS: {laserCount}</div>
           <div className="text-green-300 text-sm">
@@ -290,6 +294,7 @@ export default function Game() {
           bombSignal={bombSignal}
           onPowerUpCollected={handlePowerUpCollected}
           laserCount={laserCount}
+          onLaserExpired={handleLaserExpired}
         />
       </div>
       
