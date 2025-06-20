@@ -6,12 +6,13 @@ Open the `UnityProject` folder with Unity 2022 or newer.
 The main scene is located at `Assets/Scenes/Main.unity`.
 
 ## Features implemented
-- Basic missile and interceptor prefabs
-- GameManager spawns enemy missiles toward cities
-- Interceptors are launched from launchers and home in on targets
-- UI displays score and wave information
+- Three missile types with increasing speed per wave
+- Buildings that can take one hit before being destroyed
+- Interceptors launched from visible launchers and homing on clicked missiles
+- Score and wave tracking matching the web version
+- Keyboard keys **1-3** switch between Iron Dome, David's Sling and Arrow systems
 
-More functionality from the web version can be ported by expanding the scripts inside `Assets/Scripts`.
+This project aims to mirror the browser game's core mechanics. Further polish like upgrade menus can be added by extending the scripts.
 
 ### TextMeshPro dependency
 

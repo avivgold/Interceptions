@@ -1,35 +1,38 @@
 using UnityEngine;
 
+public enum InterceptorType { IronDome, DavidsSling, Arrow }
+
 public class Interceptor : MonoBehaviour
 {
-    public float speed = 5f;
-    public int damage = 1;
-    private Vector3 target;
+    public float speed = 6f;
+    public InterceptorType type = InterceptorType.IronDome;
+    public Missile targetMissile;
     private GameManager manager;
 
-    public void Init(Vector3 targetPos, GameManager gm)
+    public void Init(Missile target, GameManager gm, InterceptorType t)
     {
-        target = targetPos;
+        targetMissile = target;
         manager = gm;
+        type = t;
     }
 
     void Update()
     {
-        Vector3 dir = (target - transform.position).normalized;
+        if (targetMissile == null)
+        {
+            transform.position += Vector3.up * speed * Time.deltaTime;
+            if (transform.position.y > 8f)
+                Destroy(gameObject);
+            return;
+        }
+
+        Vector3 dir = (targetMissile.transform.position - transform.position).normalized;
         transform.position += dir * speed * Time.deltaTime;
 
-        if (Vector3.Distance(transform.position, target) < 0.2f)
+        if (Vector3.Distance(transform.position, targetMissile.transform.position) < 0.2f)
         {
-            Destroy(gameObject);
-        }
-    }
-
-    void OnTriggerEnter2D(Collider2D other)
-    {
-        Missile m = other.GetComponent<Missile>();
-        if (m != null)
-        {
-            m.Damage(damage);
+            targetMissile.Damage(type);
+            manager.OnInterceptorHit(this);
             Destroy(gameObject);
         }
     }

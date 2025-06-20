@@ -3,6 +3,9 @@ using UnityEngine;
 public class Building : MonoBehaviour
 {
     public int health = 1;
+
+    public bool IsDestroyed => health <= 0;
+
     public void Damage()
     {
         health--;

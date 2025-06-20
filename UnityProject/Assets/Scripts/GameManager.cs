@@ -1,27 +1,51 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
     public GameObject missilePrefab;
     public GameObject interceptorPrefab;
+    public GameObject buildingPrefab;
     public Transform[] launcherPoints;
     public Transform[] cityTargets;
+    public UIController uiController;
 
-    public float spawnInterval = 2f;
+    public float baseSpawnInterval = 2f;
     public int score = 0;
     public int wave = 1;
 
     private float spawnTimer = 0f;
-    private List<GameObject> missiles = new List<GameObject>();
-    private List<GameObject> interceptors = new List<GameObject>();
+    private readonly List<Missile> missiles = new();
+    private readonly List<Interceptor> interceptors = new();
+    private readonly List<Building> buildings = new();
+    private int intercepted = 0;
+    private InterceptorType currentSystem = InterceptorType.IronDome;
+
+    public int BuildingsRemaining => buildings.FindAll(b => !b.IsDestroyed).Count;
+    public string CurrentSystemName => currentSystem.ToString();
+
+    void Start()
+    {
+        // Spawn buildings at target positions
+        foreach (var t in cityTargets)
+        {
+            var obj = Instantiate(buildingPrefab, t.position, Quaternion.identity);
+            buildings.Add(obj.GetComponent<Building>());
+        }
+        if (uiController != null)
+            uiController.manager = this;
+    }
 
     void Update()
     {
         if (!Application.isPlaying) return;
 
+        HandleInput();
+
         spawnTimer += Time.deltaTime;
-        if (spawnTimer >= spawnInterval)
+        float interval = baseSpawnInterval / (1f + (wave - 1) * 0.1f);
+        if (spawnTimer >= interval)
         {
             spawnTimer = 0f;
             SpawnMissile();
@@ -32,30 +56,97 @@ public class GameManager : MonoBehaviour
     {
         Transform target = cityTargets[Random.Range(0, cityTargets.Length)];
         Vector3 startPos = new Vector3(Random.Range(-8f, 8f), 6f, 0);
-        GameObject m = Instantiate(missilePrefab, startPos, Quaternion.identity);
-        Missile missile = m.GetComponent<Missile>();
-        missile.Init(target.position, this);
-        missiles.Add(m);
+
+        MissileType type = (MissileType)Random.Range(0, 3);
+        float[] baseSpeeds = { 1.2f, 0.8f, 0.6f };
+        int[] baseHealth = { 1, 2, 3 };
+
+        float speed = baseSpeeds[(int)type] * (1f + (wave - 1) * 0.15f);
+        int health = baseHealth[(int)type];
+
+        GameObject mObj = Instantiate(missilePrefab, startPos, Quaternion.identity);
+        Missile missile = mObj.GetComponent<Missile>();
+        Building b = buildings[System.Array.IndexOf(cityTargets, target)];
+        missile.Init(target.position, b, this, type, speed, health);
+        missiles.Add(missile);
     }
 
-    public void LaunchInterceptor(int launcherIndex, Vector3 target)
+    void LaunchInterceptor(Missile target)
     {
-        Transform launchPoint = launcherPoints[launcherIndex];
-        GameObject i = Instantiate(interceptorPrefab, launchPoint.position, Quaternion.identity);
-        Interceptor interceptor = i.GetComponent<Interceptor>();
-        interceptor.Init(target, this);
-        interceptors.Add(i);
+        if (target == null) return;
+
+        int bestIndex = 0;
+        float bestDistance = float.MaxValue;
+        for (int i = 0; i < launcherPoints.Length; i++)
+        {
+            float d = Vector3.Distance(launcherPoints[i].position, target.transform.position);
+            if (d < bestDistance)
+            {
+                bestDistance = d;
+                bestIndex = i;
+            }
+        }
+
+        Transform launchPoint = launcherPoints[bestIndex];
+        GameObject obj = Instantiate(interceptorPrefab, launchPoint.position, Quaternion.identity);
+        Interceptor interceptor = obj.GetComponent<Interceptor>();
+        interceptor.Init(target, this, currentSystem);
+        interceptors.Add(interceptor);
     }
 
-    public void OnMissileDestroyed(GameObject missile)
+    public void OnMissileDestroyed(GameObject missileObj)
     {
-        missiles.Remove(missile);
-        Destroy(missile);
+        Missile m = missileObj.GetComponent<Missile>();
+        missiles.Remove(m);
+        Destroy(missileObj);
         score += 100;
+        intercepted++;
+        if (intercepted % 8 == 0)
+        {
+            wave++;
+        }
     }
 
-    public void OnCityHit()
+    public void OnCityHit(Building b)
     {
-        // end game when all cities destroyed
+        b.Damage();
+        if (BuildingsRemaining <= 0)
+        {
+            enabled = false; // stop game
+        }
+    }
+
+    public void OnInterceptorHit(Interceptor i)
+    {
+        interceptors.Remove(i);
+    }
+
+    void HandleInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Alpha1)) currentSystem = InterceptorType.IronDome;
+        if (Input.GetKeyDown(KeyCode.Alpha2)) currentSystem = InterceptorType.DavidsSling;
+        if (Input.GetKeyDown(KeyCode.Alpha3)) currentSystem = InterceptorType.Arrow;
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            Vector3 world = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            world.z = 0;
+
+            Missile best = null;
+            float bestDist = 1.5f;
+            foreach (var m in missiles)
+            {
+                float d = Vector3.Distance(world, m.transform.position);
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    best = m;
+                }
+            }
+            if (best != null)
+            {
+                LaunchInterceptor(best);
+            }
+        }
     }
 }
