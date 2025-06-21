@@ -36,11 +36,6 @@ export default function Game() {
     money_multiplier: 1 // Level 1 = base earnings
   });
 
-  const defenseSystemMapping = {
-    iron_dome: 'katyusha',
-    davids_sling: 'fateh',
-    arrow: 'shahab'
-  };
 
   useEffect(() => {
     let timer;
@@ -113,6 +108,14 @@ export default function Game() {
     }
   };
 
+  const buyBomb = () => {
+    const cost = 2000;
+    if (gameState.money >= cost && isGameActive) {
+      setGameState(prev => ({ ...prev, money: prev.money - cost }));
+      setBombs(prev => prev + 1);
+    }
+  };
+
   const handleLaserExpired = useCallback(() => {
     setLaserCount(prev => Math.max(0, prev - 1));
   }, []);
@@ -127,7 +130,7 @@ export default function Game() {
   const handleMissileClick = useCallback((missile, hittingSystemType) => {
     if (missile.isIntercepted) return;
 
-    const isCorrectSystem = defenseSystemMapping[hittingSystemType] === missile.type;
+    const isCorrectSystem = missile.effectiveSystem === hittingSystemType;
     
     if (isCorrectSystem) {
       missile.health -= 2;
@@ -158,7 +161,7 @@ export default function Game() {
         };
       });
     }
-  }, [defenseSystemMapping, upgrades.money_multiplier]);
+  }, [upgrades.money_multiplier]);
 
   const handleGameOver = useCallback(() => {
     setIsGameActive(false);
@@ -193,6 +196,10 @@ export default function Game() {
       setCooldowns({ iron_dome: 0, davids_sling: 0, arrow: 0 });
     } else if (type === 'laser') {
       setLaserCount(prev => Math.min(3, prev + 1));
+    } else if (type === 'repair') {
+      // handled inside canvas
+    } else if (type === 'speed') {
+      // speed boost handled in canvas
     }
   };
 
@@ -265,6 +272,14 @@ export default function Game() {
             BUY LASER ($3000)
           </Button>
           <div className="text-purple-300 text-sm">LASERS: {laserCount}</div>
+
+          <Button
+            onClick={buyBomb}
+            disabled={!isGameActive || gameState.money < 2000}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            BUY BOMB ($2000)
+          </Button>
           <div className="text-green-300 text-sm">
             Selected: <span className="text-green-400 font-semibold">
               {selectedSystem === 'iron_dome' ? 'Iron Dome' :

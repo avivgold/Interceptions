@@ -16,6 +16,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
   const lasers = useRef([]);
   const beams = useRef([]);
   const missileSlowUntil = useRef(0);
+  const speedBoostUntil = useRef(0);
 
   const cityConfigs = {
     tel_aviv: [0.35, 0.5, 0.65],
@@ -83,14 +84,19 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       shape: 'ballistic',
       health: 2,
       effectiveSystem: 'arrow'
+    },
+    uav: {
+      baseSpeed: 0.45,
+      color: '#66ff66',
+      trailColor: '#aaffaa',
+      size: 10,
+      name: 'UAV',
+      shape: 'uav',
+      health: 1,
+      effectiveSystem: 'iron_dome'
     }
   };
 
-  const defenseSystemMapping = {
-    iron_dome: 'katyusha',
-    davids_sling: 'fateh',
-    arrow: 'shahab'
-  };
 
   const interceptorTypes = {
     iron_dome: {
@@ -232,6 +238,7 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         angle: 0,
         health: missileTypes[type].health,
         maxHealth: missileTypes[type].health,
+        effectiveSystem: missileTypes[type].effectiveSystem,
         isIntercepted: false,
         trail: [],
         wobble: Math.random() * 0.3,
@@ -249,7 +256,9 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
       const baseTypes = ['money', 'bomb', 'shield'];
       if (gameState.wave >= 3) baseTypes.push('reload');
       if (gameState.wave >= 5) baseTypes.push('slow');
+      if (gameState.wave >= 6) baseTypes.push('speed');
       if (gameState.wave >= 7) baseTypes.push('laser');
+      if (gameState.wave >= 8) baseTypes.push('repair');
       const type = baseTypes[Math.floor(Math.random() * baseTypes.length)];
       powerUps.current.push({
         id: Date.now() + Math.random(),
@@ -424,6 +433,12 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     } else if (p.type === 'laser') {
       color = '#ff44aa';
       text = 'L';
+    } else if (p.type === 'speed') {
+      color = '#66ccff';
+      text = 'F';
+    } else if (p.type === 'repair') {
+      color = '#aaffaa';
+      text = 'H';
     }
     ctx.fillStyle = color;
     ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
@@ -452,6 +467,9 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         break;
       case 'ballistic':
         drawBallisticMissile(ctx, missileType);
+        break;
+      case 'uav':
+        drawUav(ctx, missileType);
         break;
     }
 
@@ -545,6 +563,14 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
     ctx.fillRect(3, missileType.size/2 - 4, 3, 10);
   };
 
+  const drawUav = (ctx, missileType) => {
+    ctx.fillStyle = missileType.color;
+    ctx.fillRect(-missileType.size / 2, -2, missileType.size, 4);
+    ctx.fillRect(-2, -missileType.size / 2, 4, missileType.size);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(-3, -3, 6, 6);
+  };
+
   const drawInterceptor = (ctx, interceptor) => {
     const spec = interceptorTypes[interceptor.systemType];
     ctx.save();
@@ -603,9 +629,17 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         return false;
       }
 
-      missile.x += (dx / distance) * missile.speed * slowFactor + Math.sin(Date.now() * 0.01) * missile.wobble;
-      missile.y += (dy / distance) * missile.speed * slowFactor;
-      missile.angle = Math.atan2(dy, dx);
+      if (missile.type === 'uav') {
+        const baseAngle = Math.atan2(dy, dx);
+        missile.angle += (Math.random() - 0.5) * 0.4;
+        missile.angle += (baseAngle - missile.angle) * 0.05;
+        missile.x += Math.cos(missile.angle) * missile.speed * slowFactor;
+        missile.y += Math.sin(missile.angle) * missile.speed * slowFactor;
+      } else {
+        missile.x += (dx / distance) * missile.speed * slowFactor + Math.sin(Date.now() * 0.01) * missile.wobble;
+        missile.y += (dy / distance) * missile.speed * slowFactor;
+        missile.angle = Math.atan2(dy, dx);
+      }
 
       drawMissile(ctx, missile);
       return true;
@@ -622,15 +656,22 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
         if (keyState.current.ArrowUp) dy -= 1;
         if (keyState.current.ArrowDown) dy += 1;
         if (dx !== 0 || dy !== 0) {
-          const speed = 4 * (1 + (upgrades?.interceptor_speed - 1) * 0.4);
+          let speed = 4 * (1 + (upgrades?.interceptor_speed - 1) * 0.4);
+          if (Date.now() < speedBoostUntil.current) speed *= 1.5;
           const len = Math.sqrt(dx * dx + dy * dy);
           interceptor.vx = (dx / len) * speed;
           interceptor.vy = (dy / len) * speed;
         }
       }
 
-      interceptor.x += interceptor.vx;
-      interceptor.y += interceptor.vy;
+      let vx = interceptor.vx;
+      let vy = interceptor.vy;
+      if (Date.now() < speedBoostUntil.current) {
+        vx *= 1.5;
+        vy *= 1.5;
+      }
+      interceptor.x += vx;
+      interceptor.y += vy;
 
       // Collect power-ups
       for (let i = 0; i < powerUps.current.length; i++) {
@@ -645,6 +686,11 @@ export default function GameCanvas({ gameState, onMissileClick, onGameOver, isGa
             }
           } else if (p.type === 'slow') {
             missileSlowUntil.current = Date.now() + 5000; // slow for 5s
+          } else if (p.type === 'speed') {
+            speedBoostUntil.current = Date.now() + 5000; // faster for 5s
+          } else if (p.type === 'repair') {
+            const damaged = buildings.current.find(b => b.health <= 0);
+            if (damaged) damaged.health = 1;
           } else if (p.type === 'laser') {
             // laser handled by parent component
           }
